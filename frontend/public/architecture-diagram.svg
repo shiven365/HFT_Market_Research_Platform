@@ -1,0 +1,43 @@
+<svg width="1040" height="560" viewBox="0 0 1040 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1040" height="560" rx="28" fill="#F4F8F6"/>
+  <rect x="70" y="78" width="260" height="404" rx="18" fill="white" stroke="#A8B9C7"/>
+  <text x="100" y="118" fill="#0E2236" font-family="Segoe UI" font-size="24" font-weight="700">Data Layer</text>
+  <rect x="95" y="150" width="212" height="70" rx="12" fill="#ECF5F2" stroke="#0F9D88"/>
+  <text x="112" y="188" fill="#0E2236" font-family="Segoe UI" font-size="18">BTCUSDT Trades</text>
+  <rect x="95" y="242" width="212" height="70" rx="12" fill="#FFF2E9" stroke="#FF8C42"/>
+  <text x="112" y="281" fill="#0E2236" font-family="Segoe UI" font-size="18">BTCUSDT 1m Klines</text>
+  <rect x="95" y="334" width="212" height="70" rx="12" fill="#EDF0F9" stroke="#5877A2"/>
+  <text x="112" y="372" fill="#0E2236" font-family="Segoe UI" font-size="18">Processed Features</text>
+
+  <rect x="390" y="78" width="260" height="404" rx="18" fill="white" stroke="#A8B9C7"/>
+  <text x="413" y="118" fill="#0E2236" font-family="Segoe UI" font-size="24" font-weight="700">FastAPI Backend</text>
+  <rect x="414" y="150" width="212" height="60" rx="12" fill="#F5F8FC" stroke="#8FA7C0"/>
+  <text x="429" y="186" fill="#0E2236" font-family="Segoe UI" font-size="16">/summary /klines /trades</text>
+  <rect x="414" y="228" width="212" height="60" rx="12" fill="#F5F8FC" stroke="#8FA7C0"/>
+  <text x="429" y="264" fill="#0E2236" font-family="Segoe UI" font-size="16">/snapshot /simulate</text>
+  <rect x="414" y="306" width="212" height="60" rx="12" fill="#F5F8FC" stroke="#8FA7C0"/>
+  <text x="429" y="342" fill="#0E2236" font-family="Segoe UI" font-size="16">/insights + metrics engine</text>
+
+  <rect x="710" y="78" width="260" height="404" rx="18" fill="white" stroke="#A8B9C7"/>
+  <text x="744" y="118" fill="#0E2236" font-family="Segoe UI" font-size="24" font-weight="700">React Frontend</text>
+  <rect x="734" y="150" width="212" height="60" rx="12" fill="#ECF5F2" stroke="#0F9D88"/>
+  <text x="754" y="186" fill="#0E2236" font-family="Segoe UI" font-size="16">Home + Explorer</text>
+  <rect x="734" y="228" width="212" height="60" rx="12" fill="#FFF2E9" stroke="#FF8C42"/>
+  <text x="754" y="264" fill="#0E2236" font-family="Segoe UI" font-size="16">3D Liquidity View</text>
+  <rect x="734" y="306" width="212" height="60" rx="12" fill="#EDF0F9" stroke="#5877A2"/>
+  <text x="754" y="342" fill="#0E2236" font-family="Segoe UI" font-size="16">Strategy + Results</text>
+
+  <path d="M330 190H390" stroke="#0E2236" stroke-width="3" stroke-linecap="round"/>
+  <path d="M650 190H710" stroke="#0E2236" stroke-width="3" stroke-linecap="round"/>
+  <path d="M330 272H390" stroke="#0E2236" stroke-width="3" stroke-linecap="round"/>
+  <path d="M650 272H710" stroke="#0E2236" stroke-width="3" stroke-linecap="round"/>
+  <path d="M330 354H390" stroke="#0E2236" stroke-width="3" stroke-linecap="round"/>
+  <path d="M650 354H710" stroke="#0E2236" stroke-width="3" stroke-linecap="round"/>
+
+  <circle cx="390" cy="190" r="6" fill="#0F9D88"/>
+  <circle cx="710" cy="190" r="6" fill="#0F9D88"/>
+  <circle cx="390" cy="272" r="6" fill="#FF8C42"/>
+  <circle cx="710" cy="272" r="6" fill="#FF8C42"/>
+  <circle cx="390" cy="354" r="6" fill="#5877A2"/>
+  <circle cx="710" cy="354" r="6" fill="#5877A2"/>
+</svg>
