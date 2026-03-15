@@ -38,7 +38,7 @@ def parse_allowed_origins():
 ALLOWED_ORIGINS = parse_allowed_origins()
 ALLOWED_ORIGIN_REGEX = os.getenv(
     "CORS_ALLOWED_ORIGIN_REGEX",
-    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    r"(^https?://(localhost|127\.0\.0\.1)(:\d+)?$)|(^https://([a-zA-Z0-9-]+\.)?vercel\.app$)",
 )
 
 
