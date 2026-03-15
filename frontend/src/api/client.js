@@ -1,4 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const isVercelHost = typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app');
+const DEFAULT_DEPLOYED_API = 'https://quantedge-backend-i1pn.onrender.com';
+const DEFAULT_LOCAL_API = 'http://127.0.0.1:8000';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (isVercelHost ? DEFAULT_DEPLOYED_API : DEFAULT_LOCAL_API);
 
 function buildUrl(path, params = {}) {
   const url = new URL(path, API_BASE);
