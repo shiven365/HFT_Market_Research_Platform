@@ -1,5 +1,6 @@
 import csv
 import math
+import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,12 +25,29 @@ from app.live_data import (
 )
 
 
-app = FastAPI(title="Trading Platform API", version="0.1.0")
+def parse_allowed_origins():
+    origins = {"http://localhost:5173", "http://127.0.0.1:5173"}
+    raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    for part in raw.split(","):
+        origin = part.strip().rstrip("/")
+        if origin:
+            origins.add(origin)
+    return sorted(origins)
+
+
+ALLOWED_ORIGINS = parse_allowed_origins()
+ALLOWED_ORIGIN_REGEX = os.getenv(
+    "CORS_ALLOWED_ORIGIN_REGEX",
+    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+)
+
+
+app = FastAPI(title="QuantEdge API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://hft-market-research-platform.vercel.app/"],
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
