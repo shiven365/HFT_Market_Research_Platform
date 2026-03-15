@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { getMeta, simulateStrategy } from '../api/client';
+import { getBacktestById, getMeta, simulateStrategy } from '../api/client';
+import EquityCurveChart from '../components/EquityCurveChart';
+import MetricsGrid from '../components/MetricsGrid';
+import StrategySummary from '../components/StrategySummary';
+import TradeDistributionChart from '../components/TradeDistributionChart';
+import TradeTable from '../components/TradeTable';
 
 function toDatetimeLocal(ms) {
   const d = new Date(ms);
@@ -27,8 +31,15 @@ function fmtUsd(v) {
   return v.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
 }
 
+function fmtDateHint(ms) {
+  const d = new Date(ms);
+  const day = d.getDate();
+  const month = d.toLocaleString('en-US', { month: 'short' });
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
 export default function StrategyLab() {
-  const navigate = useNavigate();
   const [strategy, setStrategy] = useState('momentum');
   const [threshold, setThreshold] = useState(0.2);
   const [feeBps, setFeeBps] = useState(4);
@@ -38,9 +49,11 @@ export default function StrategyLab() {
 
   const [startInput, setStartInput] = useState('');
   const [endInput, setEndInput] = useState('');
+  const [datasetRange, setDatasetRange] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [backtestResult, setBacktestResult] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -52,6 +65,7 @@ export default function StrategyLab() {
         }
         setStartInput(toDatetimeLocal(meta.klines_start));
         setEndInput(toDatetimeLocal(meta.klines_end));
+        setDatasetRange({ start: meta.klines_start, end: meta.klines_end });
       })
       .catch(() => {
         if (mounted) {
@@ -95,6 +109,7 @@ export default function StrategyLab() {
 
     setLoading(true);
     setError('');
+    setBacktestResult(null);
 
     try {
       const res = await simulateStrategy({
@@ -109,7 +124,8 @@ export default function StrategyLab() {
       });
 
       if (res?.backtest_id) {
-        navigate(`/backtest/${res.backtest_id}`);
+        const fullResult = await getBacktestById(res.backtest_id);
+        setBacktestResult(fullResult);
       } else {
         setError('Simulation completed but no backtest ID was returned.');
       }
@@ -126,14 +142,6 @@ export default function StrategyLab() {
         <div>
           <h1>Strategy Lab</h1>
           <p>Select strategy assumptions, run simulation, and inspect metrics and trade log.</p>
-        </div>
-        <div className="orderbook-top-actions">
-          <Link to="/explorer" className="btn btn-ghost">
-            Market Explorer
-          </Link>
-          <Link to="/" className="btn btn-ghost">
-            Home
-          </Link>
         </div>
       </header>
 
@@ -194,6 +202,12 @@ export default function StrategyLab() {
           <input type="datetime-local" value={endInput} onChange={(e) => setEndInput(e.target.value)} />
         </label>
 
+        {datasetRange ? (
+          <p className="strategy-date-note">
+            Select dates between {fmtDateHint(datasetRange.start)} and {fmtDateHint(datasetRange.end)}.
+          </p>
+        ) : null}
+
         <div className="strategy-actions">
           <button className="btn btn-primary" onClick={runSimulation} disabled={loading}>
             {loading ? 'Running...' : 'Run Simulation'}
@@ -205,12 +219,47 @@ export default function StrategyLab() {
       {error ? <div className="explorer-error panel">{error}</div> : null}
 
       <section className="panel strategy-empty-state">
-        <h3>Ready to simulate</h3>
-        <p>
-          Configure strategy parameters and run simulation. You will be redirected to the Backtest Results dashboard
-          for full performance analytics.
-        </p>
+        {backtestResult ? (
+          <>
+            <h3>Simulation complete</h3>
+            <p>Results are shown below.</p>
+          </>
+        ) : (
+          <>
+            <h3>Ready to simulate</h3>
+            <p>Configure strategy parameters and run simulation to view performance analytics below.</p>
+          </>
+        )}
       </section>
+
+      {backtestResult ? (
+        <>
+          <StrategySummary result={backtestResult} />
+          <MetricsGrid metrics={backtestResult.metrics} />
+
+          <section className="backtest-charts-grid">
+            <article className="panel">
+              <div className="panel-head">
+                <h3>Equity Curve</h3>
+                <span>{backtestResult.equity_curve?.length || 0} points</span>
+              </div>
+              <div className="strategy-chart-wrap">
+                <EquityCurveChart points={backtestResult.equity_curve || []} />
+              </div>
+            </article>
+
+            <article className="panel">
+              <div className="panel-head">
+                <h3>Trade Distribution</h3>
+                <span>P/L per trade histogram</span>
+              </div>
+              <TradeDistributionChart trades={backtestResult.trades || []} />
+            </article>
+          </section>
+
+          <TradeTable trades={backtestResult.trades || []} />
+        </>
+      ) : null}
     </main>
   );
 }

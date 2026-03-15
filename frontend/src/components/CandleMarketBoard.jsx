@@ -3,6 +3,10 @@ function formatTimeLabel(ts) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function candleTs(candle) {
+  return candle.time ?? candle.open_time;
+}
+
 export default function CandleMarketBoard({ candles }) {
   if (!candles || candles.length === 0) {
     return <div className="chart-empty">No candle data available</div>;
@@ -35,7 +39,7 @@ export default function CandleMarketBoard({ candles }) {
     .filter((v, i, arr) => arr.indexOf(v) === i)
     .map((idx) => ({
       x: padLeft + idx * slot + slot / 2,
-      label: formatTimeLabel(candles[idx].time),
+      label: formatTimeLabel(candleTs(candles[idx])),
     }));
 
   return (
@@ -63,7 +67,7 @@ export default function CandleMarketBoard({ candles }) {
           const bodyHeight = Math.max(1.5, Math.abs(closeY - openY));
 
           return (
-            <g key={`candle-${c.time}`}>
+            <g key={`candle-${candleTs(c)}-${idx}`}>
               <line x1={x} x2={x} y1={highY} y2={lowY} className={isUp ? 'candle-wick up' : 'candle-wick down'} />
               <rect
                 x={x - bodyWidth / 2}

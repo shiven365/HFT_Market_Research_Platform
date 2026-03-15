@@ -9,12 +9,27 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from app.ai_prediction import (
+    get_latest_prediction,
+    start_ai_prediction_engine,
+    stop_ai_prediction_engine,
+)
+from app.live_data import (
+    get_live_klines,
+    get_live_orderbook_snapshot,
+    get_live_summary,
+    get_live_trades,
+    start_live_streams,
+    stop_live_streams,
+)
+
 
 app = FastAPI(title="Trading Platform API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -508,6 +523,19 @@ def startup_event():
     BACKTEST_RESULTS = {}
 
 
+@app.on_event("startup")
+async def startup_live_event():
+    await start_live_streams()
+    klines_path, _ = get_data_paths()
+    await start_ai_prediction_engine(klines_path)
+
+
+@app.on_event("shutdown")
+async def shutdown_live_event():
+    await stop_ai_prediction_engine()
+    await stop_live_streams()
+
+
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Trading Platform API running"}
@@ -525,6 +553,63 @@ def meta():
         "trades_start": TRADES[0]["time"],
         "trades_end": TRADES[-1]["time"],
     }
+
+
+@app.get("/live/trades")
+def get_live_trades_endpoint(limit: int = Query(default=200, ge=20, le=1000)):
+    data = get_live_trades(limit)
+    return {
+        "symbol": "BTCUSDT",
+        "count": len(data),
+        "data": data,
+    }
+
+
+@app.get("/live/klines")
+def get_live_klines_endpoint(
+    interval: str = Query(default="1m"),
+    limit: int = Query(default=240, ge=20, le=500),
+):
+    if interval not in INTERVAL_TO_MINUTES:
+        raise HTTPException(status_code=400, detail=f"Unsupported interval: {interval}")
+
+    raw = get_live_klines(500)
+    if not raw:
+        raise HTTPException(status_code=503, detail="Live kline stream warming up. Please retry in a moment.")
+
+    merged = aggregate_klines(raw, interval)
+    sliced = merged[-limit:]
+
+    return {
+        "symbol": "BTCUSDT",
+        "interval": interval,
+        "count": len(sliced),
+        "data": sliced,
+    }
+
+
+@app.get("/live/orderbook")
+def get_live_orderbook_endpoint(
+    price_bucket: float = Query(default=5.0, gt=0.0, le=500.0),
+    max_levels: int = Query(default=50, ge=10, le=50),
+):
+    snapshot = get_live_orderbook_snapshot(price_bucket, max_levels)
+    if snapshot["updated_at"] is None:
+        raise HTTPException(status_code=503, detail="Live order book stream warming up. Please retry shortly.")
+    return snapshot
+
+
+@app.get("/live/summary")
+def get_live_summary_endpoint():
+    summary = get_live_summary()
+    if summary["latest_price"] is None:
+        raise HTTPException(status_code=503, detail="Live market stream warming up. Please retry in a moment.")
+    return summary
+
+
+@app.get("/prediction")
+def get_prediction_endpoint():
+    return get_latest_prediction()
 
 
 @app.get("/summary")

@@ -45,7 +45,8 @@ export default function DatasetSummary({ insights }) {
       <article className="summary-card panel">
         <p>Time Range</p>
         <h3 className="research-time-range">{start}</h3>
-        <small>to {end}</small>
+        <h3 className="research-time-range">to {end}</h3>
+        <small className="research-time-note">Note: Range is limited because the dataset is very large.</small>
       </article>
       <article className="summary-card panel">
         <p>Total Trades Analyzed</p>

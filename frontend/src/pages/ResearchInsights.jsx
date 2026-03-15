@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { getFeatures, getInsights } from '../api/client';
 import BuyerMakerRatioChart from '../components/BuyerMakerRatioChart';
 import DatasetSummary from '../components/DatasetSummary';
+import LoadingScreen from '../components/LoadingScreen';
 import ObservationsPanel from '../components/ObservationsPanel';
 import ReturnDistributionChart from '../components/ReturnDistributionChart';
 import TradeSizeHistogram from '../components/TradeSizeHistogram';
@@ -44,6 +44,10 @@ export default function ResearchInsights() {
     };
   }, []);
 
+  if (loading) {
+    return <LoadingScreen subtitle="Analyzing market structure..." />;
+  }
+
   return (
     <main className="research-shell">
       <header className="research-topbar panel">
@@ -51,30 +55,18 @@ export default function ResearchInsights() {
           <h1>Market Research Insights</h1>
           <p>Statistical analysis of BTCUSDT market behavior using historical trade and candle data.</p>
         </div>
-        <div className="research-nav-row">
-          <Link to="/explorer" className="btn btn-ghost">
-            Back to Data Explorer
-          </Link>
-          <Link to="/strategy-lab" className="btn btn-primary">
-            Open Strategy Lab
-          </Link>
-        </div>
       </header>
 
       {error ? <section className="panel explorer-error">{error}</section> : null}
 
       <DatasetSummary insights={insights} />
 
-      {loading ? (
-        <section className="panel">Computing research features...</section>
-      ) : (
-        <section className="research-grid">
-          <VolatilityChart series={features?.volatility_series || []} windowSize={features?.volatility_window || 30} />
-          <TradeSizeHistogram bins={features?.trade_size_histogram || []} />
-          <BuyerMakerRatioChart ratio={features?.buyer_seller_ratio} />
-          <ReturnDistributionChart bins={features?.return_distribution || []} />
-        </section>
-      )}
+      <section className="research-grid">
+        <VolatilityChart series={features?.volatility_series || []} windowSize={features?.volatility_window || 30} />
+        <TradeSizeHistogram bins={features?.trade_size_histogram || []} />
+        <BuyerMakerRatioChart ratio={features?.buyer_seller_ratio} />
+        <ReturnDistributionChart bins={features?.return_distribution || []} />
+      </section>
 
       <ObservationsPanel items={insights?.observations || []} />
     </main>

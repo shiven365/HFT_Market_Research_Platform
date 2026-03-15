@@ -1,8 +1,7 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getLiveKlines, getLiveSummary, getLiveTrades } from '../api/client';
 import CandleMarketBoard from '../components/CandleMarketBoard';
-
-const MarketScene3D = lazy(() => import('../components/MarketScene3D'));
 
 const fallbackSnapshot = {
   symbol: 'BTCUSDT',
@@ -80,49 +79,40 @@ function formatSignalValue(item) {
 
 export default function Home() {
   const [snapshot, setSnapshot] = useState(fallbackSnapshot);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
-    fetch(`/market-snapshot.json?v=${Date.now()}`)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error('Snapshot fetch failed');
+    async function loadLiveHome() {
+      try {
+        const [summaryRes, klineRes, tradesRes] = await Promise.all([
+          getLiveSummary(),
+          getLiveKlines({ interval: '1m', limit: 180 }),
+          getLiveTrades({ limit: 240 }),
+        ]);
+
+        if (!mounted) {
+          return;
         }
-        return res.json();
-      })
-      .then((data) => {
-        if (mounted) {
-          setSnapshot(data);
-        }
-      })
-      .catch(() => {
+
+        setSnapshot(buildSnapshotFromLive(summaryRes, klineRes?.data || [], tradesRes?.data || []));
+      } catch {
         if (mounted) {
           setSnapshot(fallbackSnapshot);
         }
-      })
-      .finally(() => {
-        if (mounted) {
-          setLoading(false);
-        }
-      });
+      }
+    }
+
+    loadLiveHome();
+    const timer = setInterval(() => {
+      loadLiveHome();
+    }, 3000);
 
     return () => {
       mounted = false;
+      clearInterval(timer);
     };
   }, []);
-
-  const updatedLabel = useMemo(() => {
-    if (!snapshot.updatedAt) {
-      return 'Snapshot pending';
-    }
-    const dt = new Date(snapshot.updatedAt);
-    if (Number.isNaN(dt.getTime())) {
-      return 'Snapshot loaded';
-    }
-    return `Updated ${dt.toLocaleString()}`;
-  }, [snapshot.updatedAt]);
 
   return (
     <main className="home-shell trading-home">
@@ -137,28 +127,7 @@ export default function Home() {
             <p className="brand-subtitle">Professional Digital Asset Terminal</p>
           </div>
         </div>
-        <nav className="top-nav" aria-label="Primary">
-          <a href="#">Markets</a>
-          <a href="#">Portfolio</a>
-          <a href="#">Orders</a>
-        </nav>
-        <div className="top-actions">
-          <Link className="btn btn-ghost" to="/explorer">
-            Market Explorer
-          </Link>
-          <Link className="btn btn-ghost" to="/research-insights">
-            Research Insights
-          </Link>
-          <Link className="btn btn-ghost" to="/orderbook-3d">
-            3D Order Book
-          </Link>
-          <Link className="btn btn-primary" to="/strategy-lab">
-            Launch Strategy Lab
-          </Link>
-        </div>
       </header>
-
-      <p className="sync-badge">{loading ? 'Syncing real market snapshot...' : updatedLabel}</p>
 
       <section className="ticker-row reveal" aria-label="Market overview">
         {snapshot.ticker.map((item) => (
@@ -172,7 +141,7 @@ export default function Home() {
         ))}
       </section>
 
-      <section className="hero-grid">
+      <section className="hero-grid hero-grid-single">
         <article className="hero panel reveal">
           <p className="eyebrow">Trading Dashboard</p>
           <h2>Trade faster with a market-first workspace built for clarity.</h2>
@@ -209,16 +178,6 @@ export default function Home() {
             </div>
           </div>
         </article>
-
-        <article className="panel reveal scene-panel">
-          <div className="panel-head">
-            <h3>3D Liquidity Surface</h3>
-            <span>Simulated depth dynamics</span>
-          </div>
-          <Suspense fallback={<div className="scene-fallback">Loading 3D market scene...</div>}>
-            <MarketScene3D />
-          </Suspense>
-        </article>
       </section>
 
       <section className="dashboard-grid">
@@ -231,10 +190,10 @@ export default function Home() {
             <CandleMarketBoard candles={snapshot.chart?.candles || []} />
           </div>
           <div className="board-stats">
-            <p>24h High: {usd.format(snapshot.board.high24)}</p>
-            <p>24h Low: {usd.format(snapshot.board.low24)}</p>
-            <p>Volume: {snapshot.board.volume24.toLocaleString(undefined, { maximumFractionDigits: 2 })} BTC</p>
-            <p>Last: {usd.format(snapshot.board.lastPrice)}</p>
+            <p>24h High: {usd.format(snapshot.board?.high24 ?? 0)}</p>
+            <p>24h Low: {usd.format(snapshot.board?.low24 ?? 0)}</p>
+            <p>Volume: {(snapshot.board?.volume24 ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} BTC</p>
+            <p>Last: {usd.format(snapshot.board?.lastPrice ?? 0)}</p>
           </div>
         </article>
 
@@ -270,4 +229,73 @@ export default function Home() {
       </section>
     </main>
   );
+}
+
+function buildSnapshotFromLive(summary, klines, trades) {
+  const latestPrice = summary?.latest_price || 0;
+  const change24h = summary?.change_24h_pct || 0;
+  const volume24h = summary?.volume_24h || 0;
+  const tradeRate = summary?.trade_rate_per_min || 0;
+  const volatility = summary?.volatility_pct || 0;
+  const buyPressure = summary?.buy_pressure_pct || 0;
+  const sellPressure = summary?.sell_pressure_pct || 0;
+
+  const candles = (klines || []).map((k) => ({ ...k, time: k.open_time }));
+  const lastCandle = candles[candles.length - 1];
+  const firstCandle = candles[0];
+
+  const oneMinuteReturn =
+    candles.length >= 2 && candles[candles.length - 2].close
+      ? ((lastCandle.close - candles[candles.length - 2].close) / candles[candles.length - 2].close) * 100
+      : 0;
+
+  const fifteenMinuteReturn =
+    candles.length >= 16 && candles[candles.length - 16].close
+      ? ((lastCandle.close - candles[candles.length - 16].close) / candles[candles.length - 16].close) * 100
+      : 0;
+
+  const averageTradeQuote = trades.length ? trades.reduce((acc, t) => acc + (t.quote_qty || 0), 0) / trades.length : 0;
+  const largestTradeQuote = trades.length ? Math.max(...trades.map((t) => t.quote_qty || 0)) : 0;
+
+  const high24 = candles.length ? Math.max(...candles.map((c) => c.high)) : latestPrice;
+  const low24 = candles.length ? Math.min(...candles.map((c) => c.low)) : latestPrice;
+
+  return {
+    symbol: 'BTCUSDT',
+    updatedAt: summary?.updated_at || Date.now(),
+    ticker: [
+      { label: 'Last Price', value: latestPrice, changePct: change24h, changeLabel: '24H' },
+      { label: '24H Change', value: change24h, changePct: change24h, changeLabel: '24H', isPercentValue: true },
+      { label: '24H Volume', value: volume24h, changePct: volatility, changeLabel: 'VOL' },
+      { label: 'Trades / Minute', value: tradeRate, changePct: buyPressure - sellPressure, changeLabel: 'FLOW' },
+    ],
+    board: {
+      high24,
+      low24,
+      volume24: volume24h,
+      lastPrice: latestPrice,
+    },
+    flow: [
+      { side: 'Buy Pressure', value: buyPressure, tone: 'positive', isPercent: true },
+      { side: 'Sell Pressure', value: sellPressure, tone: 'negative', isPercent: true },
+      {
+        side: 'Spread Proxy',
+        value: Math.max(0, high24 - low24),
+        tone: 'neutral',
+        isCurrency: true,
+      },
+      { side: '1H Volatility', value: volatility, tone: 'neutral', isPercent: true },
+    ],
+    signals: [
+      { name: '1M Return', value: oneMinuteReturn, isPercent: true },
+      { name: '15M Return', value: fifteenMinuteReturn, isPercent: true },
+      { name: 'Average Trade Size', value: averageTradeQuote, isCurrency: true },
+      { name: 'Largest Trade', value: largestTradeQuote, isCurrency: true },
+    ],
+    chart: {
+      interval: '1m',
+      candles: candles.slice(-140),
+    },
+    firstOpen: firstCandle?.open_time || null,
+  };
 }

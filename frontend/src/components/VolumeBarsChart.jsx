@@ -8,6 +8,10 @@ function compactNumber(value) {
   return value.toFixed(0);
 }
 
+function candleTs(candle) {
+  return candle.time ?? candle.open_time;
+}
+
 export default function VolumeBarsChart({ candles }) {
   if (!candles || candles.length === 0) {
     return <div className="chart-empty">No volume data available</div>;
@@ -28,7 +32,7 @@ export default function VolumeBarsChart({ candles }) {
   const timeLabels = [0, Math.floor((candles.length - 1) / 2), candles.length - 1]
     .filter((v, i, arr) => arr.indexOf(v) === i)
     .map((idx) => {
-      const dt = new Date(candles[idx].time);
+      const dt = new Date(candleTs(candles[idx]));
       return {
         x: padLeft + idx * slot + slot / 2,
         label: dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -46,7 +50,7 @@ export default function VolumeBarsChart({ candles }) {
           const isUp = c.close >= c.open;
           return (
             <rect
-              key={`vol-${c.time}`}
+              key={`vol-${candleTs(c)}-${idx}`}
               x={x - barWidth / 2}
               y={y}
               width={barWidth}

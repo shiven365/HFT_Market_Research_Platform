@@ -1,102 +1,59 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import OrderBookScene3D from '../components/OrderBookScene3D';
-import { getSnapshot } from '../api/client';
+import { getLiveOrderBook } from '../api/client';
 
-function valueLabel(mode, value) {
-  if (mode === 'trade_count') {
-    return `${value.toLocaleString()} trades`;
-  }
+function valueLabel(value) {
   return `${value.toLocaleString(undefined, { maximumFractionDigits: 6 })} BTC`;
 }
 
 export default function OrderBook3D() {
-  const [mode, setMode] = useState('volume');
   const [animate, setAnimate] = useState(true);
-  const [frameIndex, setFrameIndex] = useState(-1);
+  const [priceBucket, setPriceBucket] = useState(5);
+  const [maxLevels, setMaxLevels] = useState(50);
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [hovered, setHovered] = useState(null);
 
-  async function loadSnapshot(nextFrame) {
+  async function loadSnapshot() {
     setLoading(true);
     setError('');
 
     try {
-      const data = await getSnapshot({
-        mode,
-        frame_index: nextFrame,
-        frame_minutes: 1,
-        price_bucket: 5,
-        max_levels: 64,
+      const data = await getLiveOrderBook({
+        price_bucket: priceBucket,
+        max_levels: maxLevels,
       });
       setSnapshot(data);
-
-      if (nextFrame === -1 && data.frameIndex !== nextFrame) {
-        setFrameIndex(data.frameIndex);
-      }
     } catch (e) {
-      setError('Failed to load 3D snapshots from backend.');
+      setError('Failed to load live 3D order book data from backend.');
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    setFrameIndex(-1);
-  }, [mode]);
-
-  useEffect(() => {
-    loadSnapshot(frameIndex);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, frameIndex]);
-
-  useEffect(() => {
-    if (!animate || !snapshot || snapshot.totalFrames <= 1 || frameIndex < 0) {
-      return undefined;
-    }
-
+    loadSnapshot();
     const timer = setInterval(() => {
-      setFrameIndex((prev) => {
-        if (!snapshot) {
-          return prev;
-        }
-        const next = prev + 1;
-        return next >= snapshot.totalFrames ? 0 : next;
-      });
-    }, 900);
+      loadSnapshot();
+    }, 2000);
 
     return () => clearInterval(timer);
-  }, [animate, snapshot, frameIndex]);
-
-  const modeLabel = useMemo(() => (mode === 'volume' ? 'Volume Mode' : 'Trade Count Mode'), [mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceBucket, maxLevels]);
 
   return (
     <main className="orderbook-shell">
       <header className="orderbook-topbar panel">
         <div>
           <h1>3D Order Book / Liquidity View</h1>
-          <p>Historical derived activity density across price buckets and replayable time slices.</p>
-        </div>
-        <div className="orderbook-top-actions">
-          <Link to="/explorer" className="btn btn-ghost">
-            Market Explorer
-          </Link>
-          <Link to="/" className="btn btn-ghost">
-            Home
-          </Link>
+          <p>Live Binance depth data bucketed by price and rendered as 3D liquidity bars.</p>
         </div>
       </header>
 
       <section className="orderbook-controls panel">
-        <div className="mode-switch" role="group" aria-label="Activity mode">
-          <button className={mode === 'volume' ? 'active' : ''} onClick={() => setMode('volume')}>
-            Volume View
-          </button>
-          <button className={mode === 'trade_count' ? 'active' : ''} onClick={() => setMode('trade_count')}>
-            Trade Count View
-          </button>
+        <div className="mode-switch" role="group" aria-label="Data source">
+          <button className="active">Live Market Depth</button>
         </div>
 
         <label className="replay-toggle">
@@ -105,37 +62,35 @@ export default function OrderBook3D() {
         </label>
 
         <label>
-          Snapshot Selector
-          <select
-            value={frameIndex}
-            onChange={(e) => setFrameIndex(Number(e.target.value))}
-            disabled={!snapshot || !snapshot.frames || snapshot.frames.length === 0}
-          >
-            {(snapshot?.frames || []).map((f) => (
-              <option key={f.index} value={f.index}>
-                {f.label}
-              </option>
-            ))}
-          </select>
+          Price Bucket ($)
+          <input
+            type="number"
+            min="0.1"
+            step="0.5"
+            value={priceBucket}
+            onChange={(e) => setPriceBucket(Number(e.target.value) || 0.1)}
+          />
+        </label>
+
+        <label>
+          Depth Levels
+          <input
+            type="number"
+            min="10"
+            max="50"
+            step="1"
+            value={maxLevels}
+            onChange={(e) => setMaxLevels(Math.max(10, Math.min(50, Number(e.target.value) || 10)))}
+          />
         </label>
       </section>
 
       <section className="orderbook-replay panel">
         <div>
-          <p>{modeLabel}</p>
-          <h3>{snapshot?.frame?.label || 'Loading frame...'}</h3>
+          <p>Live Mode</p>
+          <h3>{snapshot?.updated_at ? new Date(snapshot.updated_at).toLocaleString() : 'Loading stream...'}</h3>
         </div>
-        <label className="slider-wrap">
-          Replay Slider
-          <input
-            type="range"
-            min={0}
-            max={Math.max(0, (snapshot?.totalFrames || 1) - 1)}
-            value={Math.max(0, frameIndex)}
-            onChange={(e) => setFrameIndex(Number(e.target.value))}
-            disabled={!snapshot || snapshot.totalFrames <= 1}
-          />
-        </label>
+        <div className="slider-wrap">Auto refresh: every 2 seconds</div>
       </section>
 
       {error ? <div className="explorer-error panel">{error}</div> : null}
@@ -182,10 +137,10 @@ export default function OrderBook3D() {
                 <strong>Volume:</strong> {hovered.volume.toFixed(6)} BTC
               </p>
               <p>
-                <strong>Trades:</strong> {hovered.trade_count.toLocaleString()}
+                <strong>Bid Volume:</strong> {hovered.bid_volume.toFixed(6)} BTC
               </p>
               <p>
-                <strong>Activity:</strong> {valueLabel(mode, hovered.activity)}
+                <strong>Ask Volume:</strong> {hovered.ask_volume.toFixed(6)} BTC
               </p>
               <p>
                 <strong>Intensity:</strong> {(hovered.intensity * 100).toFixed(1)}%
@@ -197,12 +152,12 @@ export default function OrderBook3D() {
 
           <div className="snapshot-metrics">
             <p>
-              <span>Frame</span>
-              <strong>{snapshot?.frameIndex ?? '-'}</strong>
+              <span>Updated</span>
+              <strong>{snapshot?.updated_at ? new Date(snapshot.updated_at).toLocaleTimeString() : '-'}</strong>
             </p>
             <p>
-              <span>Total Frames</span>
-              <strong>{snapshot?.totalFrames ?? '-'}</strong>
+              <span>Bid Levels</span>
+              <strong>{snapshot?.bids?.length ?? '-'}</strong>
             </p>
             <p>
               <span>Price Bucket</span>
@@ -210,7 +165,7 @@ export default function OrderBook3D() {
             </p>
             <p>
               <span>Max Activity</span>
-              <strong>{snapshot ? valueLabel(mode, snapshot.maxActivity || 0) : '-'}</strong>
+              <strong>{snapshot ? valueLabel(snapshot.maxActivity || 0) : '-'}</strong>
             </p>
           </div>
         </article>

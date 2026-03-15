@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import CandleMarketBoard from '../components/CandleMarketBoard';
 import VolumeBarsChart from '../components/VolumeBarsChart';
-import { getKlines, getMeta, getSummary, getTradesSample } from '../api/client';
+import { getKlines, getLiveKlines, getLiveSummary, getLiveTrades, getMeta, getSummary, getTradesSample } from '../api/client';
 
 function toDatetimeLocal(ms) {
   const d = new Date(ms);
@@ -30,6 +29,7 @@ function fmtUsd(v) {
 }
 
 export default function Explorer() {
+  const [mode, setMode] = useState('historical');
   const [timeframe, setTimeframe] = useState('1m');
   const [startInput, setStartInput] = useState('');
   const [endInput, setEndInput] = useState('');
@@ -63,7 +63,7 @@ export default function Explorer() {
     };
   }, []);
 
-  async function loadData({ startLocal, endLocal, nextTimeframe }) {
+  async function loadHistoricalData({ startLocal, endLocal, nextTimeframe }) {
     setLoading(true);
     setError('');
 
@@ -89,13 +89,56 @@ export default function Explorer() {
     }
   }
 
+  async function loadLiveData() {
+    setLoading(true);
+    setError('');
+
+    try {
+      const [summaryRes, klineRes, tradesRes] = await Promise.all([
+        getLiveSummary(),
+        getLiveKlines({ interval: '1m', limit: 240 }),
+        getLiveTrades({ limit: 120 }),
+      ]);
+
+      setSummary({
+        total_trades: summaryRes.total_trades,
+        average_trade_size: summaryRes.average_trade_size,
+        return_pct: summaryRes.change_24h_pct,
+        volatility_pct: summaryRes.volatility_pct,
+      });
+      setCandles(klineRes.data || []);
+      setTrades(tradesRes.data || []);
+    } catch (e) {
+      setError('Failed to load live market data. Ensure backend live streams are connected.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
+    if (mode !== 'historical') {
+      return;
+    }
     if (!startInput || !endInput) {
       return;
     }
-    loadData({ startLocal: startInput, endLocal: endInput, nextTimeframe: timeframe });
+    loadHistoricalData({ startLocal: startInput, endLocal: endInput, nextTimeframe: timeframe });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startInput, endInput, timeframe]);
+  }, [mode, startInput, endInput, timeframe]);
+
+  useEffect(() => {
+    if (mode !== 'live') {
+      return undefined;
+    }
+
+    loadLiveData();
+    const timer = setInterval(() => {
+      loadLiveData();
+    }, 2000);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const stats = useMemo(() => {
     if (!summary) {
@@ -120,36 +163,50 @@ export default function Explorer() {
       <header className="explorer-topbar panel">
         <div>
           <h1>Market Data Explorer</h1>
-          <p>Inspect BTCUSDT historical candles and trades over custom time ranges.</p>
-        </div>
-        <div className="orderbook-top-actions">
-          <Link to="/research-insights" className="btn btn-ghost">
-            Research Insights
-          </Link>
-          <Link to="/" className="btn btn-ghost">
-            Back to Home
-          </Link>
+          <p>
+            {mode === 'historical'
+              ? 'Inspect BTCUSDT historical candles and trades over custom time ranges.'
+              : 'Live market mode updates every 2 seconds from Binance streams.'}
+          </p>
         </div>
       </header>
 
       <section className="explorer-filters panel">
-        <label>
-          Start
-          <input type="datetime-local" value={startInput} onChange={(e) => setStartInput(e.target.value)} />
-        </label>
-        <label>
-          End
-          <input type="datetime-local" value={endInput} onChange={(e) => setEndInput(e.target.value)} />
-        </label>
-        <label>
-          Timeframe
-          <select value={timeframe} onChange={(e) => setTimeframe(e.target.value)}>
-            <option value="1m">1m</option>
-            <option value="5m">5m</option>
-            <option value="15m">15m</option>
-            <option value="1h">1h</option>
-          </select>
-        </label>
+        <div className="mode-switch" role="group" aria-label="Explorer mode">
+          <button className={mode === 'historical' ? 'active' : ''} onClick={() => setMode('historical')}>
+            Historical Data
+          </button>
+          <button className={mode === 'live' ? 'active' : ''} onClick={() => setMode('live')}>
+            Live Market
+          </button>
+        </div>
+
+        {mode === 'historical' ? (
+          <>
+            <label>
+              Start
+              <input type="datetime-local" value={startInput} onChange={(e) => setStartInput(e.target.value)} />
+            </label>
+            <label>
+              End
+              <input type="datetime-local" value={endInput} onChange={(e) => setEndInput(e.target.value)} />
+            </label>
+            <p className="explorer-historical-note">
+              For better performance on heavy data, select dates between 1-Jan-2024 to 1-Feb-2024.
+            </p>
+            <label>
+              Timeframe
+              <select value={timeframe} onChange={(e) => setTimeframe(e.target.value)}>
+                <option value="1m">1m</option>
+                <option value="5m">5m</option>
+                <option value="15m">15m</option>
+                <option value="1h">1h</option>
+              </select>
+            </label>
+          </>
+        ) : (
+          <p className="explorer-live-note">Live mode streams latest trades, candles, and summary from Binance.</p>
+        )}
       </section>
 
       {error ? <div className="explorer-error panel">{error}</div> : null}
@@ -167,7 +224,7 @@ export default function Explorer() {
         <article className="panel">
           <div className="panel-head">
             <h3>Candlestick Chart</h3>
-            <span>{loading ? 'Loading...' : `${candles.length} candles`}</span>
+            <span>{loading ? 'Loading...' : `${candles.length} candles (${mode})`}</span>
           </div>
           <div className="explorer-chart-wrap">
             <CandleMarketBoard candles={candles} />
@@ -187,7 +244,7 @@ export default function Explorer() {
 
       <section className="panel trade-table-wrap">
         <div className="panel-head">
-          <h3>Recent Trades (Sample)</h3>
+          <h3>{mode === 'live' ? 'Recent Trades (Live)' : 'Recent Trades (Sample)'}</h3>
           <span>{loading ? 'Loading...' : `${trades.length} rows`}</span>
         </div>
         <div className="trade-table-scroll">

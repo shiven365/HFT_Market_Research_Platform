@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import EquityCurveChart from '../components/EquityCurveChart';
 import MetricsGrid from '../components/MetricsGrid';
 import StrategySummary from '../components/StrategySummary';
@@ -9,7 +9,6 @@ import { getBacktestById } from '../api/client';
 
 export default function BacktestResults() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -59,11 +58,6 @@ export default function BacktestResults() {
     return (
       <main className="backtest-shell">
         <section className="panel explorer-error">{error || 'Backtest result not found.'}</section>
-        <section className="backtest-nav-row">
-          <Link to="/strategy-lab" className="btn btn-primary">
-            Back to Strategy Lab
-          </Link>
-        </section>
       </main>
     );
   }
@@ -74,14 +68,6 @@ export default function BacktestResults() {
         <div>
           <h1>Backtest Results</h1>
           <p>Read-only performance analytics dashboard for completed simulation runs.</p>
-        </div>
-        <div className="backtest-nav-row">
-          <Link to="/strategy-lab" className="btn btn-ghost">
-            Back to Strategy Lab
-          </Link>
-          <button className="btn btn-primary" onClick={() => navigate('/strategy-lab')}>
-            Run New Simulation
-          </button>
         </div>
       </header>
 

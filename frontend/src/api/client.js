@@ -71,3 +71,23 @@ export function getFeatures(params) {
 export function getInsights(params) {
   return getJson('/insights', params);
 }
+
+export function getLiveSummary() {
+  return getJson('/live/summary');
+}
+
+export function getLiveKlines(params) {
+  return getJson('/live/klines', params);
+}
+
+export function getLiveTrades(params) {
+  return getJson('/live/trades', params);
+}
+
+export function getLiveOrderBook(params) {
+  return getJson('/live/orderbook', params);
+}
+
+export function getPrediction() {
+  return getJson('/prediction');
+}
