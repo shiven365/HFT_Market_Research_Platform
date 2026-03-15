@@ -74,7 +74,7 @@ export default function AIPrediction() {
       <header className="ai-topbar panel">
         <div>
           <h1>AI Prediction Engine</h1>
-          <p>BTCUSDT next candle direction from a cached RandomForest model over live rolling features.</p>
+          <p>BTCUSDT next candle direction with live updates.</p>
         </div>
       </header>
 
@@ -122,11 +122,7 @@ export default function AIPrediction() {
             </div>
 
             <p className="ai-footnote">
-              Frontend checks every 2 seconds. Backend computes a new prediction every
-              {' '}
-              {prediction?.prediction_interval_seconds || 10}
-              {' '}
-              seconds.
+              Updates every {prediction?.prediction_interval_seconds || 10} seconds.
             </p>
           </article>
         </section>

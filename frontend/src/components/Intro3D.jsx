@@ -256,7 +256,7 @@ export default function Intro3D({ onEnter }) {
       <div className="intro3d-overlay">
         <div className="intro3d-panel">
           <p className="intro3d-kicker">Welcome</p>
-          <h1>HFT Market Research Platform</h1>
+          <h1>QuantEdge Market Research Platform</h1>
           <p>Interactive Market Microstructure and Strategy Simulation</p>
           <button className="btn btn-primary intro3d-enter" onClick={handleEnter}>
             Enter Platform

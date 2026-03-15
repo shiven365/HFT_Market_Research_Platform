@@ -8,7 +8,7 @@ const fallbackSnapshot = {
   updatedAt: null,
   ticker: [
     { label: 'Last Price', value: 0, changePct: 0, changeLabel: '1H' },
-    { label: '24H Change', value: 0, changePct: 0, changeLabel: '24H', isPercentValue: true },
+    { label: '24H Change', value: 0, changePct: 0, changeLabel: '24H', isSignedCurrency: true },
     { label: '24H Volume', value: 0, changePct: 0, changeLabel: '1M' },
     { label: 'Trades / Minute', value: 0, changePct: 0, changeLabel: '15M' },
   ],
@@ -54,7 +54,18 @@ function signedPercent(value) {
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
 
+function signedUsd(value) {
+  if (!Number.isFinite(value)) {
+    return '$0.00';
+  }
+  const sign = value >= 0 ? '+' : '-';
+  return `${sign}${usd.format(Math.abs(value))}`;
+}
+
 function formatTickerValue(item) {
+  if (item.isSignedCurrency) {
+    return signedUsd(item.value);
+  }
   if (item.isPercentValue) {
     return `${item.value.toFixed(2)}%`;
   }
@@ -123,7 +134,7 @@ export default function Home() {
         <div className="brand-wrap">
           <span className="brand-mark" />
           <div>
-            <h1 className="brand-title">PulseTrade</h1>
+            <h1 className="brand-title">QuantEdge</h1>
             <p className="brand-subtitle">Professional Digital Asset Terminal</p>
           </div>
         </div>
@@ -156,9 +167,6 @@ export default function Home() {
             <Link className="btn btn-ghost" to="/research-insights">
               Open Research Insights
             </Link>
-            <Link className="btn btn-ghost" to="/orderbook-3d">
-              Open 3D Liquidity View
-            </Link>
             <Link className="btn btn-ghost" to="/strategy-lab">
               Run Strategies
             </Link>
@@ -187,7 +195,7 @@ export default function Home() {
             <span>{snapshot.symbol} {snapshot.chart?.interval || '1m'} real candles</span>
           </div>
           <div className="chart-canvas" role="img" aria-label="Real market board from csv data">
-            <CandleMarketBoard candles={snapshot.chart?.candles || []} />
+            <CandleMarketBoard candles={snapshot.chart?.candles || []} resetSignal="home-route" />
           </div>
           <div className="board-stats">
             <p>24h High: {usd.format(snapshot.board?.high24 ?? 0)}</p>
@@ -243,6 +251,12 @@ function buildSnapshotFromLive(summary, klines, trades) {
   const candles = (klines || []).map((k) => ({ ...k, time: k.open_time }));
   const lastCandle = candles[candles.length - 1];
   const firstCandle = candles[0];
+  const change24hValue =
+    candles.length && firstCandle?.open
+      ? lastCandle.close - firstCandle.open
+      : latestPrice && Number.isFinite(change24h)
+        ? (latestPrice * change24h) / (100 + change24h || 1)
+        : 0;
 
   const oneMinuteReturn =
     candles.length >= 2 && candles[candles.length - 2].close
@@ -265,7 +279,7 @@ function buildSnapshotFromLive(summary, klines, trades) {
     updatedAt: summary?.updated_at || Date.now(),
     ticker: [
       { label: 'Last Price', value: latestPrice, changePct: change24h, changeLabel: '24H' },
-      { label: '24H Change', value: change24h, changePct: change24h, changeLabel: '24H', isPercentValue: true },
+      { label: '24H Change', value: change24hValue, changePct: change24h, changeLabel: '24H', isSignedCurrency: true },
       { label: '24H Volume', value: volume24h, changePct: volatility, changeLabel: 'VOL' },
       { label: 'Trades / Minute', value: tradeRate, changePct: buyPressure - sellPressure, changeLabel: 'FLOW' },
     ],

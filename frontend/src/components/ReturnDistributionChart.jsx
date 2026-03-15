@@ -2,15 +2,28 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 
 function toChartData(bins = []) {
   return bins.map((bin) => ({
-    midpoint: Number(bin.mid).toFixed(4),
+    midpoint: Number(bin.mid),
+    midpointLabel: `${Number(bin.mid).toFixed(3)}%`,
+    rangeLabel: `${Number(bin.bin_start).toFixed(3)}% to ${Number(bin.bin_end).toFixed(3)}%`,
     count: bin.count,
-    countDisplay: bin.count > 0 ? bin.count : null,
     direction: bin.mid >= 0 ? 'up' : 'down',
   }));
 }
 
 export default function ReturnDistributionChart({ bins }) {
   const data = toChartData(bins);
+
+  if (!data.length) {
+    return (
+      <article className="panel">
+        <div className="panel-head">
+          <h3>Return Distribution</h3>
+          <span>Price return histogram (central 98%)</span>
+        </div>
+        <div className="chart-empty">No return distribution data available</div>
+      </article>
+    );
+  }
 
   return (
     <article className="panel">
@@ -20,18 +33,27 @@ export default function ReturnDistributionChart({ bins }) {
       </div>
       <div className="research-chart-wrap">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 16, right: 16, left: 6, bottom: 8 }} barCategoryGap="12%">
+          <BarChart data={data} margin={{ top: 16, right: 16, left: 6, bottom: 26 }} barCategoryGap="10%">
             <CartesianGrid stroke="rgba(142, 186, 220, 0.2)" strokeDasharray="3 3" />
-            <XAxis dataKey="midpoint" hide />
-            <YAxis scale="log" domain={[1, 'auto']} width={64} tickFormatter={(v) => Number(v).toLocaleString()} />
-            <Tooltip
-              formatter={(v, name, payload) => [Number(payload?.payload?.count || v).toLocaleString(), 'Intervals']}
-              labelFormatter={(v) => `Return midpoint: ${v}%`}
+            <XAxis
+              dataKey="midpointLabel"
+              interval="preserveStartEnd"
+              height={46}
+              tickMargin={8}
+              tick={{ fill: '#9cc1dd', fontSize: 11 }}
             />
-            <Bar dataKey="countDisplay" radius={[4, 4, 0, 0]} minPointSize={2}>
+            <YAxis domain={[0, 'auto']} width={64} tickFormatter={(v) => Number(v).toLocaleString()} />
+            <Tooltip
+              formatter={(v, name, payload) => [Number(payload?.payload?.count || v).toLocaleString(), 'Candles']}
+              labelFormatter={(v, payload) => {
+                const point = payload?.[0]?.payload;
+                return point ? `Return bin: ${point.rangeLabel} (mid: ${v})` : `Return midpoint: ${v}`;
+              }}
+            />
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} minPointSize={2}>
               {data.map((entry, index) => (
                 <Cell
-                  key={`cell-${entry.midpoint}-${index}`}
+                  key={`cell-${entry.midpointLabel}-${index}`}
                   fill={entry.direction === 'up' ? 'rgba(34, 204, 165, 0.9)' : 'rgba(224, 109, 109, 0.9)'}
                 />
               ))}

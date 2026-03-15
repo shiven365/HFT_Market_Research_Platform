@@ -170,6 +170,261 @@ a {
   box-shadow: 0 8px 18px rgba(14, 165, 143, 0.28);
 }
 
+.app-shell {
+  opacity: 1;
+}
+
+.app-shell.app-shell-enter {
+  animation: appShellFadeIn 0.62s ease both;
+}
+
+.intro-page-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+  perspective: 1200px;
+  background:
+    radial-gradient(circle at 14% 16%, rgba(22, 150, 255, 0.28), transparent 44%),
+    radial-gradient(circle at 84% 86%, rgba(15, 203, 169, 0.24), transparent 46%),
+    linear-gradient(164deg, #020913 0%, #031324 56%, #041b2e 100%);
+}
+
+.intro-page-shell::before,
+.intro-page-shell::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: -18%;
+  z-index: 0;
+}
+
+.intro-page-shell::before {
+  background: radial-gradient(circle at 26% 35%, rgba(35, 170, 255, 0.22), transparent 36%);
+  animation: introAuroraShift 9s ease-in-out infinite alternate;
+}
+
+.intro-page-shell::after {
+  background: radial-gradient(circle at 72% 62%, rgba(16, 204, 173, 0.2), transparent 38%);
+  animation: introAuroraShift 12s ease-in-out infinite alternate-reverse;
+}
+
+.intro-page-shell.is-exiting {
+  animation: introPageExit 0.46s ease forwards;
+}
+
+.intro-page-bg-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.68;
+  background-image:
+    linear-gradient(rgba(114, 170, 215, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(114, 170, 215, 0.12) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(3, 14, 25, 0.45), rgba(3, 14, 25, 0.8));
+  background-size: 44px 44px, 44px 44px, auto;
+  transform: rotateX(58deg) translateY(28%);
+  transform-origin: center bottom;
+  filter: drop-shadow(0 -20px 50px rgba(20, 64, 98, 0.35));
+}
+
+.intro-page-candle-field {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.intro-page-candle {
+  position: absolute;
+  bottom: 18%;
+  display: grid;
+  place-items: center;
+  gap: 0.12rem;
+  animation-name: introCandleRise;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+.intro-page-candle-wick {
+  width: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+.intro-page-candle-body {
+  width: 10px;
+  border-radius: 4px;
+  background: currentColor;
+  box-shadow: 0 0 16px rgba(85, 189, 255, 0.35);
+}
+
+.intro-page-candle.up {
+  color: #23d4ad;
+}
+
+.intro-page-candle.down {
+  color: #f06f7d;
+}
+
+.intro-page-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.intro-page-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: #8fddff;
+  box-shadow: 0 0 14px rgba(102, 211, 255, 0.9);
+  opacity: 0.52;
+  animation-name: introParticleDrift;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.intro-page-panel {
+  position: relative;
+  z-index: 2;
+  width: min(920px, calc(100vw - 2.2rem));
+  margin: min(13vh, 110px) auto 0;
+  text-align: center;
+  border-radius: 18px;
+  border: 1px solid rgba(125, 188, 235, 0.24);
+  padding: 1.4rem 1.3rem 1.6rem;
+  background:
+    linear-gradient(168deg, rgba(2, 13, 25, 0.86) 0%, rgba(2, 10, 19, 0.76) 62%, rgba(1, 8, 15, 0.9) 100%);
+  box-shadow:
+    0 16px 44px rgba(2, 14, 26, 0.48),
+    inset 0 0 0 1px rgba(160, 215, 255, 0.08);
+  backdrop-filter: blur(5px);
+}
+
+.intro-page-kicker {
+  margin: 0;
+  color: #6ec8ff;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+}
+
+.intro-page-panel h1 {
+  margin: 0.6rem 0 0;
+  color: #f7fdff;
+  font-size: clamp(2rem, 6vw, 4.1rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-shadow: 0 10px 22px rgba(0, 0, 0, 0.58);
+}
+
+.intro-page-tagline {
+  margin: 0.55rem 0 0;
+  color: #8ecfff;
+  font-size: clamp(1.02rem, 2.4vw, 1.45rem);
+  font-weight: 600;
+}
+
+.intro-page-subtitle {
+  margin: 0.72rem auto 0;
+  color: #cde4f6;
+  font-size: clamp(0.92rem, 2vw, 1.1rem);
+  max-width: 56ch;
+}
+
+.intro-page-market-note {
+  margin: 0.6rem auto 0;
+  color: #8fc7eb;
+  font-size: 0.9rem;
+  font-family: 'IBM Plex Mono', monospace;
+  max-width: 62ch;
+}
+
+.intro-page-enter {
+  margin-top: 1.05rem;
+  border: 0;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0.74rem 1.3rem;
+  box-shadow: 0 10px 22px rgba(10, 165, 142, 0.28);
+}
+
+.intro-page-enter:hover {
+  transform: translateY(-1px);
+}
+
+@keyframes introCandleRise {
+  0% {
+    transform: translate3d(0, 16px, 0) scale(0.92);
+    opacity: 0.24;
+  }
+  25% {
+    transform: translate3d(0, -8px, 0) scale(1.02);
+    opacity: 0.8;
+  }
+  55% {
+    transform: translate3d(0, -18px, 0) scale(1.05);
+    opacity: 0.98;
+  }
+  100% {
+    transform: translate3d(0, 20px, 0) scale(0.9);
+    opacity: 0.28;
+  }
+}
+
+@keyframes introParticleDrift {
+  0% {
+    transform: translate3d(0, 12px, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.55;
+  }
+  88% {
+    opacity: 0.46;
+  }
+  100% {
+    transform: translate3d(0, -34px, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes introAuroraShift {
+  from {
+    transform: translate3d(-1%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(1%, 1%, 0) scale(1.08);
+  }
+}
+
+@keyframes introPageExit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.018);
+  }
+}
+
+@keyframes appShellFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .intro3d-shell {
   min-height: 100vh;
   position: relative;
@@ -671,17 +926,27 @@ a {
   background-size: 34px 34px, 34px 34px, auto;
   position: relative;
   overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .candle-board {
+  position: relative;
   width: 100%;
   height: 100%;
+  user-select: none;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.candle-board.is-dragging .candle-svg {
+  cursor: grabbing;
 }
 
 .candle-svg {
   width: 100%;
   height: 100%;
   display: block;
+  cursor: crosshair;
 }
 
 .candle-bg {
@@ -703,6 +968,68 @@ a {
   fill: #9cc1dd;
   font-size: 12px;
   font-family: 'IBM Plex Mono', monospace;
+}
+
+.candle-toolbar {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.candle-reset-btn,
+.candle-zoom-chip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  border-radius: 999px;
+  border: 1px solid rgba(136, 181, 216, 0.32);
+  background: rgba(6, 20, 35, 0.75);
+  color: #b8d9f1;
+  padding: 0.2rem 0.55rem;
+}
+
+.candle-reset-btn {
+  cursor: pointer;
+}
+
+.candle-reset-btn:hover {
+  border-color: rgba(136, 181, 216, 0.52);
+}
+
+.candle-tooltip {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  transform: translate(0, -50%);
+  min-width: 148px;
+  border-radius: 10px;
+  border: 1px solid rgba(142, 187, 224, 0.28);
+  background: rgba(4, 16, 29, 0.88);
+  box-shadow: 0 14px 30px rgba(4, 13, 24, 0.4);
+  padding: 0.45rem 0.55rem;
+}
+
+.candle-tooltip p {
+  margin: 0.12rem 0;
+  color: #c7e4f6;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+}
+
+.candle-hover-line {
+  stroke: rgba(171, 213, 246, 0.75);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.candle-hover-dot {
+  fill: #8ed4ff;
+  stroke: rgba(8, 23, 37, 0.9);
+  stroke-width: 1.2;
 }
 
 .candle-wick {
@@ -942,6 +1269,7 @@ a {
   border-radius: 12px;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(5, 20, 38, 0.96), rgba(8, 27, 47, 0.92));
+  overscroll-behavior: contain;
 }
 
 .explorer-volume-wrap {
@@ -951,17 +1279,89 @@ a {
   border-radius: 12px;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(5, 20, 38, 0.96), rgba(8, 27, 47, 0.92));
+  overscroll-behavior: contain;
 }
 
 .volume-board {
+  position: relative;
   width: 100%;
   height: 100%;
+  user-select: none;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.volume-board.is-dragging .volume-svg {
+  cursor: grabbing;
 }
 
 .volume-svg {
   width: 100%;
   height: 100%;
   display: block;
+  cursor: crosshair;
+}
+
+.volume-toolbar {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.volume-reset-btn,
+.volume-zoom-chip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  border-radius: 999px;
+  border: 1px solid rgba(136, 181, 216, 0.32);
+  background: rgba(6, 20, 35, 0.75);
+  color: #b8d9f1;
+  padding: 0.2rem 0.55rem;
+}
+
+.volume-reset-btn {
+  cursor: pointer;
+}
+
+.volume-reset-btn:hover {
+  border-color: rgba(136, 181, 216, 0.52);
+}
+
+.volume-tooltip {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  transform: translate(0, -50%);
+  min-width: 148px;
+  border-radius: 10px;
+  border: 1px solid rgba(142, 187, 224, 0.28);
+  background: rgba(4, 16, 29, 0.88);
+  box-shadow: 0 14px 30px rgba(4, 13, 24, 0.4);
+  padding: 0.45rem 0.55rem;
+}
+
+.volume-tooltip p {
+  margin: 0.12rem 0;
+  color: #c7e4f6;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+}
+
+.volume-hover-line {
+  stroke: rgba(171, 213, 246, 0.75);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.volume-hover-dot {
+  fill: #8ed4ff;
+  stroke: rgba(8, 23, 37, 0.9);
+  stroke-width: 1.2;
 }
 
 .volume-bar.up {
@@ -1100,8 +1500,8 @@ a {
   border-radius: 12px;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(5, 20, 38, 0.96), rgba(8, 27, 47, 0.92));
+  overscroll-behavior: contain;
 }
-
 .equity-chart,
 .equity-svg {
   width: 100%;
@@ -1217,6 +1617,7 @@ a {
 }
 
 .dist-chart-wrap {
+  position: relative;
   margin-top: 0.7rem;
   height: 290px;
   border: 1px solid rgba(16, 34, 52, 0.15);
@@ -1224,6 +1625,90 @@ a {
   overflow: hidden;
   background: linear-gradient(180deg, rgba(5, 20, 38, 0.96), rgba(8, 27, 47, 0.92));
   padding: 0.35rem;
+}
+
+.dist-toolbar {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.dist-zoom-slider-wrap {
+  position: relative;
+  height: 18px;
+  margin: 0.2rem 0.45rem 0.05rem;
+}
+
+.dist-zoom-base-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(234, 241, 247, 0.7);
+}
+
+.dist-zoom-active-line {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 2px;
+  border-radius: 999px;
+  background: #28d6a5;
+  pointer-events: none;
+}
+
+.dist-zoom-slider {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.dist-zoom-slider:focus {
+  outline: none;
+}
+
+.dist-zoom-slider::-webkit-slider-runnable-track {
+  height: 8px;
+  background: transparent;
+}
+
+.dist-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -2px;
+  border-radius: 50%;
+  border: 1px solid rgba(6, 28, 42, 0.9);
+  background: #1fdfab;
+  box-shadow: 0 0 0 2px rgba(14, 32, 45, 0.45);
+}
+
+.dist-zoom-slider::-moz-range-track {
+  height: 8px;
+  background: transparent;
+  border: none;
+}
+
+.dist-zoom-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(6, 28, 42, 0.9);
+  background: #1fdfab;
+  box-shadow: 0 0 0 2px rgba(14, 32, 45, 0.45);
 }
 
 .research-shell {
@@ -1835,6 +2320,19 @@ a {
 }
 
 @media (max-width: 760px) {
+  .intro-page-panel {
+    margin-top: 10vh;
+    padding: 1.15rem 1.05rem 1.28rem;
+  }
+
+  .intro-page-bg-grid {
+    transform: rotateX(62deg) translateY(34%);
+  }
+
+  .intro-page-candle-body {
+    width: 8px;
+  }
+
   .app-global-inner {
     flex-direction: column;
     align-items: flex-start;

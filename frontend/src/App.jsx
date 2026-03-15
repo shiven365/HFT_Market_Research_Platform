@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import Intro3D from './components/Intro3D';
+import IntroPage from './pages/IntroPage';
 import LiveStatusIndicator from './components/LiveStatusIndicator';
 import BacktestResults from './pages/BacktestResults';
 import Home from './pages/Home';
@@ -10,7 +10,9 @@ import ResearchInsights from './pages/ResearchInsights';
 import StrategyLab from './pages/StrategyLab';
 import AIPrediction from './pages/AIPrediction';
 
-const INTRO_STORAGE_KEY = 'introShown';
+const INTRO_STORAGE_KEY = 'intro_seen';
+const INTRO_FADE_OUT_MS = 460;
+const APP_FADE_IN_MS = 620;
 
 function readIntroFlag() {
   if (typeof window === 'undefined') {
@@ -26,8 +28,29 @@ function readIntroFlag() {
 export default function App() {
   const navigate = useNavigate();
   const [introShown, setIntroShown] = useState(readIntroFlag);
+  const [introExiting, setIntroExiting] = useState(false);
+  const [appEntering, setAppEntering] = useState(false);
+  const introTimerRef = useRef(null);
+  const appTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (introTimerRef.current) {
+        clearTimeout(introTimerRef.current);
+      }
+      if (appTimerRef.current) {
+        clearTimeout(appTimerRef.current);
+      }
+    };
+  }, []);
 
   function handleEnterIntro() {
+    if (introExiting) {
+      return;
+    }
+
+    setIntroExiting(true);
+
     if (typeof window !== 'undefined') {
       try {
         window.sessionStorage.setItem(INTRO_STORAGE_KEY, 'true');
@@ -35,16 +58,25 @@ export default function App() {
         // Continue even if storage is unavailable in this browser context.
       }
     }
-    setIntroShown(true);
-    navigate('/', { replace: true });
+
+    introTimerRef.current = setTimeout(() => {
+      setIntroShown(true);
+      setIntroExiting(false);
+      setAppEntering(true);
+      navigate('/', { replace: true });
+
+      appTimerRef.current = setTimeout(() => {
+        setAppEntering(false);
+      }, APP_FADE_IN_MS);
+    }, INTRO_FADE_OUT_MS);
   }
 
   if (!introShown) {
-    return <Intro3D onEnter={handleEnterIntro} />;
+    return <IntroPage onEnter={handleEnterIntro} exiting={introExiting} />;
   }
 
   return (
-    <>
+    <div className={`app-shell${appEntering ? ' app-shell-enter' : ''}`}>
       <header className="app-global-header">
         <div className="app-global-inner">
           <div className="app-brand-and-live">
@@ -84,10 +116,10 @@ export default function App() {
         <Route path="/backtest/:id" element={<BacktestResults />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </div>
   );
 }
 
 function LinkBrand() {
-  return <p className="app-global-brand">PulseTrade</p>;
+  return <p className="app-global-brand">QuantEdge</p>;
 }

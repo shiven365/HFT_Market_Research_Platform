@@ -55,6 +55,10 @@ export default function StrategyLab() {
   const [error, setError] = useState('');
   const [backtestResult, setBacktestResult] = useState(null);
 
+  const chartResetSignal = backtestResult
+    ? `${backtestResult.backtest_id || 'result'}-${backtestResult.equity_curve?.length || 0}-${backtestResult.trades?.length || 0}`
+    : 'no-result';
+
   useEffect(() => {
     let mounted = true;
 
@@ -241,19 +245,19 @@ export default function StrategyLab() {
             <article className="panel">
               <div className="panel-head">
                 <h3>Equity Curve</h3>
-                <span>{backtestResult.equity_curve?.length || 0} points</span>
+                <span>{backtestResult.equity_curve?.length || 0} points, wheel to zoom and drag to pan</span>
               </div>
               <div className="strategy-chart-wrap">
-                <EquityCurveChart points={backtestResult.equity_curve || []} />
+                <EquityCurveChart points={backtestResult.equity_curve || []} resetSignal={chartResetSignal} />
               </div>
             </article>
 
             <article className="panel">
               <div className="panel-head">
                 <h3>Trade Distribution</h3>
-                <span>P/L per trade histogram</span>
+                <span>P/L per trade histogram, wheel to zoom and move green dot to pan</span>
               </div>
-              <TradeDistributionChart trades={backtestResult.trades || []} />
+              <TradeDistributionChart trades={backtestResult.trades || []} resetSignal={chartResetSignal} />
             </article>
           </section>
 

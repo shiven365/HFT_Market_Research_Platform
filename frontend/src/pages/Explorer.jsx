@@ -158,6 +158,9 @@ export default function Explorer() {
     ];
   }, [summary]);
 
+  const chartResetSignal =
+    mode === 'historical' ? `historical-${timeframe}-${startInput}-${endInput}` : `live-${timeframe}`;
+
   return (
     <main className="explorer-shell">
       <header className="explorer-topbar panel">
@@ -227,7 +230,7 @@ export default function Explorer() {
             <span>{loading ? 'Loading...' : `${candles.length} candles (${mode})`}</span>
           </div>
           <div className="explorer-chart-wrap">
-            <CandleMarketBoard candles={candles} />
+            <CandleMarketBoard candles={candles} resetSignal={chartResetSignal} />
           </div>
         </article>
 
@@ -237,7 +240,7 @@ export default function Explorer() {
             <span>{timeframe} interval</span>
           </div>
           <div className="explorer-volume-wrap">
-            <VolumeBarsChart candles={candles} />
+            <VolumeBarsChart candles={candles} resetSignal={chartResetSignal} />
           </div>
         </article>
       </section>

@@ -1,5 +1,5 @@
 PROJECT DETAILED OVERVIEW
-Interactive Market Microstructure and HFT Simulation Platform
+QuantEdge
 
 ====================================================================
 1) HIGH-LEVEL PURPOSE

@@ -1,4 +1,4 @@
-# Interactive Market Microstructure and HFT Simulation Platform
+# QuantEdge
 
 A laptop-friendly research platform that uses historical Binance BTCUSDT trades and 1-minute klines to explore market microstructure, run strategy simulations, and visualize insights through a React frontend and Python FastAPI backend.
 
