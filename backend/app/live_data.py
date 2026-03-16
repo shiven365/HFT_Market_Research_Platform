@@ -1,35 +1,18 @@
-import asyncio
-import json
-import logging
 import math
-from collections import deque
 from datetime import datetime, timezone
-from threading import Lock
 
-import websockets
+from app.binance_stream import BinanceMarketStream
 
-
-logger = logging.getLogger("live_data")
-
-TRADE_STREAM_URL = "wss://stream.binance.com:9443/ws/btcusdt@trade"
-KLINE_STREAM_URL = "wss://stream.binance.com:9443/ws/btcusdt@kline_1m"
-ORDERBOOK_STREAM_URL = "wss://stream.binance.com:9443/ws/btcusdt@depth"
 
 MAX_TRADES = 5000
 MAX_KLINES = 500
 MAX_ORDERBOOK_LEVELS = 50
 
-LIVE_TRADES = deque(maxlen=MAX_TRADES)
-LIVE_KLINES = deque(maxlen=MAX_KLINES)
-LIVE_ORDERBOOK = {
-    "event_time": None,
-    "bids": [],
-    "asks": [],
-}
-
-_lock = Lock()
-_tasks = []
-_started = False
+_STREAM = BinanceMarketStream(
+    max_trades=MAX_TRADES,
+    max_klines=MAX_KLINES,
+    max_orderbook_levels=MAX_ORDERBOOK_LEVELS,
+)
 
 
 def _sample_stdev(values):
@@ -40,170 +23,24 @@ def _sample_stdev(values):
     return math.sqrt(variance)
 
 
-def _to_trade(payload):
-    price = float(payload["p"])
-    qty = float(payload["q"])
-    return {
-        "trade_id": int(payload["t"]),
-        "price": price,
-        "qty": qty,
-        "quote_qty": price * qty,
-        "time": int(payload["T"]),
-        "is_buyer_maker": bool(payload["m"]),
-    }
-
-
-def _to_kline(payload):
-    k = payload["k"]
-    return {
-        "open_time": int(k["t"]),
-        "close_time": int(k["T"]),
-        "open": float(k["o"]),
-        "high": float(k["h"]),
-        "low": float(k["l"]),
-        "close": float(k["c"]),
-        "volume": float(k["v"]),
-        "quote_volume": float(k.get("q", 0.0)),
-        "is_closed": bool(k["x"]),
-    }
-
-
-def _trim_levels(levels, descending: bool):
-    prepared = []
-    for row in levels:
-        if len(row) < 2:
-            continue
-        price = float(row[0])
-        qty = float(row[1])
-        if qty <= 0:
-            continue
-        prepared.append([price, qty])
-
-    prepared.sort(key=lambda x: x[0], reverse=descending)
-    return prepared[:MAX_ORDERBOOK_LEVELS]
-
-
-def _apply_trade(payload):
-    if "p" not in payload or "q" not in payload:
-        return
-    record = _to_trade(payload)
-    with _lock:
-        LIVE_TRADES.append(record)
-
-
-def _apply_kline(payload):
-    if "k" not in payload:
-        return
-    record = _to_kline(payload)
-    with _lock:
-        if LIVE_KLINES and LIVE_KLINES[-1]["open_time"] == record["open_time"]:
-            LIVE_KLINES[-1] = record
-        else:
-            LIVE_KLINES.append(record)
-
-
-def _apply_orderbook(payload):
-    bids = payload.get("b", [])
-    asks = payload.get("a", [])
-    event_time = int(payload.get("E", int(datetime.now(timezone.utc).timestamp() * 1000)))
-
-    if not bids and not asks:
-        return
-
-    with _lock:
-        LIVE_ORDERBOOK["event_time"] = event_time
-        LIVE_ORDERBOOK["bids"] = _trim_levels(bids, descending=True)
-        LIVE_ORDERBOOK["asks"] = _trim_levels(asks, descending=False)
-
-
-async def _stream_loop(stream_name: str, url: str, on_message):
-    backoff = 1.0
-    while True:
-        try:
-            async with websockets.connect(
-                url,
-                ping_interval=20,
-                ping_timeout=20,
-                open_timeout=20,
-                close_timeout=5,
-                max_queue=4096,
-            ) as ws:
-                logger.info("Connected to %s", stream_name)
-                backoff = 1.0
-                while True:
-                    message = await ws.recv()
-                    payload = json.loads(message)
-                    on_message(payload)
-        except asyncio.CancelledError:
-            logger.info("Cancelled %s stream", stream_name)
-            raise
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("%s stream disconnected: %s", stream_name, exc)
-            await asyncio.sleep(backoff)
-            backoff = min(backoff * 1.8, 30.0)
-
-
-async def stream_trades():
-    await _stream_loop("trades", TRADE_STREAM_URL, _apply_trade)
-
-
-async def stream_klines():
-    await _stream_loop("klines", KLINE_STREAM_URL, _apply_kline)
-
-
-async def stream_orderbook():
-    await _stream_loop("orderbook", ORDERBOOK_STREAM_URL, _apply_orderbook)
-
-
 async def start_live_streams():
-    global _tasks, _started
-    if _started:
-        return
-
-    _started = True
-    _tasks = [
-        asyncio.create_task(stream_trades(), name="binance-trades"),
-        asyncio.create_task(stream_klines(), name="binance-klines"),
-        asyncio.create_task(stream_orderbook(), name="binance-orderbook"),
-    ]
+    _STREAM.start()
 
 
 async def stop_live_streams():
-    global _tasks, _started
-    if not _started:
-        return
-
-    for task in _tasks:
-        task.cancel()
-    if _tasks:
-        await asyncio.gather(*_tasks, return_exceptions=True)
-    _tasks = []
-    _started = False
+    _STREAM.stop()
 
 
 def get_live_trades(limit: int):
-    with _lock:
-        data = list(LIVE_TRADES)[-limit:]
-    data.reverse()
-    return data
+    return _STREAM.get_trades(limit)
 
 
 def get_live_klines(limit: int):
-    with _lock:
-        data = list(LIVE_KLINES)[-limit:]
-    return data
+    return _STREAM.get_klines(limit)
 
 
 def get_live_orderbook_levels(max_levels: int):
-    with _lock:
-        event_time = LIVE_ORDERBOOK["event_time"]
-        bids = LIVE_ORDERBOOK["bids"][:max_levels]
-        asks = LIVE_ORDERBOOK["asks"][:max_levels]
-    return {
-        "event_time": event_time,
-        "bids": bids,
-        "asks": asks,
-    }
+    return _STREAM.get_orderbook(max_levels)
 
 
 def get_live_orderbook_snapshot(price_bucket: float, max_levels: int):
