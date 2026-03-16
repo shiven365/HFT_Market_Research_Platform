@@ -86,6 +86,13 @@ def _build_feature_frame(df: pd.DataFrame, include_target: bool) -> pd.DataFrame
     return frame
 
 
+def _sanitize_feature_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    sanitized = frame.copy()
+    sanitized[FEATURE_COLUMNS] = sanitized[FEATURE_COLUMNS].replace([np.inf, -np.inf], np.nan)
+    sanitized[FEATURE_COLUMNS] = sanitized[FEATURE_COLUMNS].fillna(0.0)
+    return sanitized
+
+
 def _probability_for_class(model: RandomForestClassifier, vector: np.ndarray, class_value: int) -> float:
     probs = model.predict_proba(vector)[0]
     classes = list(model.classes_)
@@ -114,7 +121,8 @@ def _train_model(dataset_path: Path):
     numeric_df = numeric_df.dropna(subset=required_cols)
 
     training_df = _build_feature_frame(numeric_df, include_target=True)
-    training_df = training_df.dropna(subset=FEATURE_COLUMNS + ["target"])
+    training_df = _sanitize_feature_columns(training_df)
+    training_df = training_df.dropna(subset=["target"])
 
     if len(training_df) < 10:
         raise RuntimeError(
@@ -242,7 +250,8 @@ def _predict_from_live_buffer():
 
     live_df = pd.DataFrame(candles)
     feature_df = _build_feature_frame(live_df[["open_time", "close", "volume"]], include_target=False)
-    latest_features = feature_df.dropna(subset=FEATURE_COLUMNS)
+    feature_df = _sanitize_feature_columns(feature_df)
+    latest_features = feature_df.tail(1)
 
     if latest_features.empty:
         return {
