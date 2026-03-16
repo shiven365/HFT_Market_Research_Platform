@@ -50,6 +50,7 @@ TRAINING_DATASET_PATH: Optional[Path] = None
 LAST_TRAIN_ERROR: Optional[str] = None
 LAST_TRAIN_ATTEMPT_TS: float = 0.0
 TRAIN_RETRY_SECONDS = 60
+FALLBACK_CANDLES = []
 
 _started = False
 _task: Optional[asyncio.Task] = None
@@ -179,9 +180,58 @@ def _attempt_train_model(dataset_path: Path):
         return False
 
 
+def _load_fallback_candles(limit: int):
+    global FALLBACK_CANDLES
+    if TRAINING_DATASET_PATH is None:
+        return []
+
+    if not FALLBACK_CANDLES:
+        try:
+            df = pd.read_csv(TRAINING_DATASET_PATH)
+            cols = ["open_time", "close", "volume"]
+            for col in cols:
+                if col not in df.columns:
+                    return []
+
+            frame = df[cols].copy()
+            for col in cols:
+                frame[col] = pd.to_numeric(frame[col], errors="coerce")
+            frame = frame.dropna(subset=cols)
+
+            FALLBACK_CANDLES = [
+                {
+                    "open_time": int(row.open_time),
+                    "open": float(row.close),
+                    "high": float(row.close),
+                    "low": float(row.close),
+                    "close": float(row.close),
+                    "volume": float(row.volume),
+                }
+                for row in frame.itertuples(index=False)
+            ]
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to load fallback candles for AI prediction: %s", exc)
+            return []
+
+    if not FALLBACK_CANDLES:
+        return []
+
+    total = len(FALLBACK_CANDLES)
+    size = max(1, min(limit, total))
+    if total <= size:
+        return FALLBACK_CANDLES[-size:]
+
+    span = total - size
+    start = int(time.time() / 10) % (span + 1)
+    end = start + size
+    return FALLBACK_CANDLES[start:end]
+
+
 
 def _refresh_live_buffer():
     candles = get_live_klines(MAX_CANDLES)
+    if not candles:
+        candles = _load_fallback_candles(MAX_CANDLES)
     if not candles:
         return
 
