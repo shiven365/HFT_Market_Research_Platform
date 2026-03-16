@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Optional
+import time
 
 import numpy as np
 import pandas as pd
@@ -45,6 +46,10 @@ LATEST_PREDICTION = {
 MODEL: Optional[RandomForestClassifier] = None
 MODEL_ACCURACY: Optional[float] = None
 MODEL_TRAINED_AT: Optional[str] = None
+TRAINING_DATASET_PATH: Optional[Path] = None
+LAST_TRAIN_ERROR: Optional[str] = None
+LAST_TRAIN_ATTEMPT_TS: float = 0.0
+TRAIN_RETRY_SECONDS = 60
 
 _started = False
 _task: Optional[asyncio.Task] = None
@@ -119,11 +124,11 @@ def _train_model(dataset_path: Path):
     y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
 
     model = RandomForestClassifier(
-        n_estimators=300,
-        max_depth=10,
+        n_estimators=120,
+        max_depth=8,
         min_samples_leaf=3,
         random_state=42,
-        n_jobs=-1,
+        n_jobs=1,
     )
     model.fit(x_train, y_train)
 
@@ -135,10 +140,27 @@ def _train_model(dataset_path: Path):
         accuracy = float(accuracy_score(y_train, y_pred_train))
 
     with _lock:
-        global MODEL, MODEL_ACCURACY, MODEL_TRAINED_AT
+        global MODEL, MODEL_ACCURACY, MODEL_TRAINED_AT, LAST_TRAIN_ERROR
         MODEL = model
         MODEL_ACCURACY = accuracy
         MODEL_TRAINED_AT = _utc_now_iso()
+        LAST_TRAIN_ERROR = None
+
+
+def _attempt_train_model(dataset_path: Path):
+    global LAST_TRAIN_ATTEMPT_TS
+    LAST_TRAIN_ATTEMPT_TS = time.time()
+
+    try:
+        _train_model(Path(dataset_path))
+        logger.info("AI prediction model trained successfully")
+        return True
+    except Exception as exc:  # noqa: BLE001
+        with _lock:
+            global LAST_TRAIN_ERROR
+            LAST_TRAIN_ERROR = str(exc)
+        logger.warning("AI prediction model training failed: %s", exc)
+        return False
 
 
 
@@ -179,6 +201,7 @@ def _predict_from_live_buffer():
         model = MODEL
         model_accuracy = MODEL_ACCURACY
         candles = list(LIVE_CANDLES)
+        last_train_error = LAST_TRAIN_ERROR
 
     if model is None:
         return {
@@ -192,6 +215,7 @@ def _predict_from_live_buffer():
             "updated_at": _utc_now_iso(),
             "buffer_size": len(candles),
             "prediction_interval_seconds": PREDICTION_INTERVAL_SECONDS,
+            "error": last_train_error,
         }
 
     if len(candles) < MIN_CANDLES_FOR_FEATURES:
@@ -251,6 +275,11 @@ def _predict_from_live_buffer():
 async def _prediction_loop():
     while True:
         try:
+            if MODEL is None and TRAINING_DATASET_PATH is not None:
+                elapsed = time.time() - LAST_TRAIN_ATTEMPT_TS
+                if LAST_TRAIN_ATTEMPT_TS == 0.0 or elapsed >= TRAIN_RETRY_SECONDS:
+                    _attempt_train_model(TRAINING_DATASET_PATH)
+
             _refresh_live_buffer()
             payload = _predict_from_live_buffer()
             _set_latest(payload)
@@ -266,11 +295,13 @@ async def start_ai_prediction_engine(dataset_path: Path):
     if _started:
         return
 
-    try:
-        _train_model(Path(dataset_path))
-        logger.info("AI prediction model trained successfully")
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("AI prediction model training failed: %s", exc)
+    with _lock:
+        global TRAINING_DATASET_PATH
+        TRAINING_DATASET_PATH = Path(dataset_path)
+
+    if not _attempt_train_model(Path(dataset_path)):
+        with _lock:
+            last_error = LAST_TRAIN_ERROR
         _set_latest(
             {
                 "status": "error",
@@ -283,7 +314,7 @@ async def start_ai_prediction_engine(dataset_path: Path):
                 "updated_at": _utc_now_iso(),
                 "buffer_size": 0,
                 "prediction_interval_seconds": PREDICTION_INTERVAL_SECONDS,
-                "error": str(exc),
+                "error": last_error,
             }
         )
 
