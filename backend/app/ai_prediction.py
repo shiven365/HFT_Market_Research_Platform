@@ -111,7 +111,7 @@ def _train_model(dataset_path: Path):
     training_df = _build_feature_frame(df[required_cols], include_target=True)
     training_df = training_df.dropna(subset=FEATURE_COLUMNS + ["target"])
 
-    if len(training_df) < 50:
+    if len(training_df) < 10:
         raise RuntimeError("Not enough rows to train AI prediction model")
 
     x = training_df[FEATURE_COLUMNS].astype(float)
