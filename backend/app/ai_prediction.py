@@ -108,11 +108,19 @@ def _train_model(dataset_path: Path):
     if missing:
         raise RuntimeError(f"Missing required columns for training: {', '.join(missing)}")
 
-    training_df = _build_feature_frame(df[required_cols], include_target=True)
+    numeric_df = df[required_cols].copy()
+    for col in required_cols:
+        numeric_df[col] = pd.to_numeric(numeric_df[col], errors="coerce")
+    numeric_df = numeric_df.dropna(subset=required_cols)
+
+    training_df = _build_feature_frame(numeric_df, include_target=True)
     training_df = training_df.dropna(subset=FEATURE_COLUMNS + ["target"])
 
     if len(training_df) < 10:
-        raise RuntimeError("Not enough rows to train AI prediction model")
+        raise RuntimeError(
+            "Not enough rows to train AI prediction model "
+            f"(raw_rows={len(df)}, numeric_rows={len(numeric_df)}, feature_rows={len(training_df)})"
+        )
 
     x = training_df[FEATURE_COLUMNS].astype(float)
     y = training_df["target"].astype(int)
