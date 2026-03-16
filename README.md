@@ -3,7 +3,7 @@
 A laptop-friendly research platform that uses historical Binance BTCUSDT trades and 1-minute klines to explore market microstructure, run strategy simulations, and visualize insights through a React frontend and Python FastAPI backend.
 ## Live Demo
 
-Frontend: https://frontend-five-ecru-90.vercel.app/
+Demo link: https://frontend-five-ecru-90.vercel.app/
 ## Run Locally
 
 ### Backend
